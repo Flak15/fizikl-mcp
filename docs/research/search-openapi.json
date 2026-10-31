@@ -1,0 +1,762 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FastAPI",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/api/v1/search/food/": {
+            "get": {
+                "tags": [
+                    "food_tracker v1"
+                ],
+                "summary": "Get Food V1 Search View",
+                "description": "API V1 view для выдачи результатов поиска клиенту.\n\n:param user: Пользователь\n:param query: Query строка поиска\n:param page_size: Размер страницы ответа.\n:param page: Номер страницы ответа.\n:param is_base: Если True, вернуть только базовые (верифицированные) продукты.\n:return:",
+                "operationId": "get_food_v1_search_view_api_v1_search_food__get",
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Query"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "title": "Page Size"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "is_base",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Is Base"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/search/ingredients/": {
+            "post": {
+                "tags": [
+                    "food_tracker v1"
+                ],
+                "summary": "Search Ingredients",
+                "operationId": "search_ingredients_api_v1_search_ingredients__post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IngredientSearchRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IngredientSearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v2/search/food/": {
+            "get": {
+                "tags": [
+                    "food_tracker v2"
+                ],
+                "summary": "Get Food V2 Search View",
+                "description": "API V2 view для выдачи результатов поиска клиенту.\n\n:param user: Пользователь\n:param query: Query строка поиска\n:param page_size: Размер страницы ответа.\n:param page: Номер страницы ответа.\n:param is_base: Если True, вернуть только базовые (верифицированные) продукты.\n:return:",
+                "operationId": "get_food_v2_search_view_api_v2_search_food__get",
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Query"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "title": "Page Size"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "is_base",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Is Base"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FoodV2PaginatedResponseSchema"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/internal/search/food/": {
+            "get": {
+                "tags": [
+                    "food_tracker internal"
+                ],
+                "summary": "Get Food Internal Search Advanced With Logic View",
+                "description": "API internal view для выдачи результатов поиска с более подробной информации и с доработками по полям.\nНужна для тестирования и анализа результатов.",
+                "operationId": "get_food_internal_search_advanced_with_logic_view_api_internal_search_food__get",
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Query"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "title": "Page Size"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "is_base",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Is Base"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/internal/search/food/llm-candidates/": {
+            "get": {
+                "tags": [
+                    "food_tracker internal"
+                ],
+                "summary": "Get Food Internal Search Llm Candidates View",
+                "description": "Вернуть стабильный hydrated список food candidates для FPS/LLM flow.\n\nEndpoint предназначен не для дебага ES, а как внутренний контракт между\nсервисами. Поэтому наружу отдается уже нормализованный JSON с полями,\nна которые может опираться FPS без знания внутренней структуры ES hit.",
+                "operationId": "get_food_internal_search_llm_candidates_view_api_internal_search_food_llm_candidates__get",
+                "security": [
+                    {
+                        "JWTAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Query"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1,
+                            "title": "Page"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 15,
+                            "minimum": 1,
+                            "default": 5,
+                            "title": "Page Size"
+                        }
+                    },
+                    {
+                        "name": "fusion_search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false,
+                            "title": "Fusion Search"
+                        }
+                    },
+                    {
+                        "name": "fusion_page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 15,
+                            "minimum": 1,
+                            "default": 5,
+                            "title": "Fusion Page Size"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FoodLLMCandidatePaginatedResponseSchema"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "FoodLLMCandidatePaginatedResponseSchema": {
+                "properties": {
+                    "pagination": {
+                        "$ref": "#/components/schemas/PaginationSchema"
+                    },
+                    "results": {
+                        "items": {
+                            "$ref": "#/components/schemas/FoodLLMCandidateSchema"
+                        },
+                        "type": "array",
+                        "title": "Results"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pagination",
+                    "results"
+                ],
+                "title": "FoodLLMCandidatePaginatedResponseSchema",
+                "description": "Ответ нового internal endpoint для LLM candidate search."
+            },
+            "FoodLLMCandidateSchema": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "brand_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Brand Name"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "food_llm_context": {
+                        "$ref": "#/components/schemas/FoodLLMContextSchema"
+                    },
+                    "food": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Food"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "brand_name",
+                    "score",
+                    "food_llm_context",
+                    "food"
+                ],
+                "title": "FoodLLMCandidateSchema",
+                "description": "Один hydrated search candidate в стабильном межсервисном формате."
+            },
+            "FoodLLMContextSchema": {
+                "properties": {
+                    "display_name": {
+                        "type": "string",
+                        "title": "Display Name"
+                    },
+                    "brand_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Brand Name"
+                    },
+                    "macronutrients_per_100g": {
+                        "$ref": "#/components/schemas/FoodLLMMacronutrientsPer100gSchema"
+                    },
+                    "is_verified": {
+                        "type": "boolean",
+                        "title": "Is Verified"
+                    },
+                    "is_base": {
+                        "type": "boolean",
+                        "title": "Is Base"
+                    },
+                    "is_public": {
+                        "type": "boolean",
+                        "title": "Is Public"
+                    },
+                    "black_label": {
+                        "type": "boolean",
+                        "title": "Black Label"
+                    },
+                    "is_beverage": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Beverage"
+                    },
+                    "is_llm": {
+                        "type": "boolean",
+                        "title": "Is Llm"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "display_name",
+                    "brand_name",
+                    "macronutrients_per_100g",
+                    "is_verified",
+                    "is_base",
+                    "is_public",
+                    "black_label",
+                    "is_beverage",
+                    "is_llm"
+                ],
+                "title": "FoodLLMContextSchema",
+                "description": "Компактный безопасный контекст кандидата для LLM reasoning."
+            },
+            "FoodLLMMacronutrientsPer100gSchema": {
+                "properties": {
+                    "calories": {
+                        "type": "number",
+                        "title": "Calories"
+                    },
+                    "protein": {
+                        "type": "number",
+                        "title": "Protein"
+                    },
+                    "fat": {
+                        "type": "number",
+                        "title": "Fat"
+                    },
+                    "carbohydrates": {
+                        "type": "number",
+                        "title": "Carbohydrates"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "calories",
+                    "protein",
+                    "fat",
+                    "carbohydrates"
+                ],
+                "title": "FoodLLMMacronutrientsPer100gSchema",
+                "description": "Минимальный набор КБЖУ на 100 г для передачи в LLM-контекст."
+            },
+            "FoodV2PaginatedResponseSchema": {
+                "properties": {
+                    "pagination": {
+                        "$ref": "#/components/schemas/PaginationSchema"
+                    },
+                    "results": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Results"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pagination",
+                    "results"
+                ],
+                "title": "FoodV2PaginatedResponseSchema"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "IngredientMatch": {
+                "properties": {
+                    "ingredient": {
+                        "type": "string",
+                        "title": "Ingredient",
+                        "description": "Исходный ингредиент"
+                    },
+                    "best_match": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/IngredientSearchResultItem"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Лучшее совпадение для ингредиента"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ingredient"
+                ],
+                "title": "IngredientMatch",
+                "description": "Модель совпадения для конкретного ингредиента."
+            },
+            "IngredientSearchRequest": {
+                "properties": {
+                    "ingredients": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "maxItems": 50,
+                        "minItems": 1,
+                        "title": "Ingredients",
+                        "description": "Список ингредиентов для поиска"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ingredients"
+                ],
+                "title": "IngredientSearchRequest",
+                "description": "Модель запроса для поиска по ингредиентам."
+            },
+            "IngredientSearchResponse": {
+                "properties": {
+                    "total_ingredients": {
+                        "type": "integer",
+                        "title": "Total Ingredients",
+                        "description": "Общее количество переданных ингредиентов"
+                    },
+                    "matched_ingredients": {
+                        "type": "integer",
+                        "title": "Matched Ingredients",
+                        "description": "Количество ингредиентов с найденными совпадениями"
+                    },
+                    "ingredient_matches": {
+                        "items": {
+                            "$ref": "#/components/schemas/IngredientMatch"
+                        },
+                        "type": "array",
+                        "title": "Ingredient Matches",
+                        "description": "Список совпадений для каждого ингредиента"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total_ingredients",
+                    "matched_ingredients",
+                    "ingredient_matches"
+                ],
+                "title": "IngredientSearchResponse",
+                "description": "Модель ответа для поиска по ингредиентам."
+            },
+            "IngredientSearchResultItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Уникальный идентификатор продукта"
+                    },
+                    "original_name": {
+                        "type": "string",
+                        "title": "Original Name",
+                        "description": "Название продукта"
+                    },
+                    "original_brand_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Original Brand Name",
+                        "description": "Название бренда"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score",
+                        "description": "Скор релевантности для данного ингредиента"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "original_name",
+                    "score"
+                ],
+                "title": "IngredientSearchResultItem",
+                "description": "Модель одного результата поиска по ингредиенту."
+            },
+            "PaginationSchema": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "title": "Page"
+                    },
+                    "has_next": {
+                        "type": "boolean",
+                        "title": "Has Next"
+                    },
+                    "has_previous": {
+                        "type": "boolean",
+                        "title": "Has Previous"
+                    },
+                    "count_pages": {
+                        "type": "integer",
+                        "title": "Count Pages"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "page",
+                    "has_next",
+                    "has_previous",
+                    "count_pages"
+                ],
+                "title": "PaginationSchema"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        },
+        "securitySchemes": {
+            "JWTAuth": {
+                "type": "apiKey",
+                "description": "JWTAuth authentication scheme",
+                "in": "header",
+                "name": "Authorization"
+            }
+        }
+    }
+}
