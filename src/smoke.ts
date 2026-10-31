@@ -4,17 +4,20 @@
  * реальный дневник. Запуск: `npm run smoke`, креды — LOGIN/PASSWORD в `.env`
  * у корня проекта. Запись удаляется за собой (гарантия в finally); известное
  * последствие: дневной отчёт за дату прогона может сохранить значения дня теста.
+ *
+ * id записей и продуктов берутся из структурных экспортов инструментов
+ * (createEatenFood, searchFoodCards, fetchEatenFood) — не из разбора текста.
  */
 
-import { AUTH_FILE_PATH, FIZIKL_URLS, getCredentials, loadEnvFile } from "./config.js";
+import { AUTH_FILE_PATH, getCredentials, loadEnvFile } from "./config.js";
 import { FiziklAuth } from "./fizikl/auth.js";
-import { getJson } from "./fizikl/client.js";
 import { deleteEatenFood } from "./tools/delete-eaten-food.js";
-import { getDaySummary } from "./tools/get-day-summary.js";
-import { fetchFoodCard, formatFoodCard, isGramServing } from "./tools/get-food.js";
+import { today } from "./tools/format.js";
+import { fetchEatenFood, getDaySummary } from "./tools/get-day-summary.js";
+import { formatFoodCard, isGramServing } from "./tools/get-food.js";
 import { listMeals } from "./tools/list-meals.js";
-import { logFood, today } from "./tools/log-food.js";
-import { searchFood } from "./tools/search-food.js";
+import { createEatenFood, formatCreatedEatenFood, type LogFoodArgs } from "./tools/log-food.js";
+import { formatSearchResults, searchFoodCards } from "./tools/search-food.js";
 
 const SEARCH_QUERY = "гречка";
 const SEARCH_LIMIT = 3;
@@ -22,27 +25,14 @@ const GRAMS = 10;
 const MEAL = "perekus"; // явный приём пищи, чтобы не зависеть от окна автоподбора
 const TOTAL_STEPS = 8;
 
-/** Минимальный вид записи eaten-food/list — для программной проверки id. */
-interface EatenFoodRecord {
-  id: number;
-}
-
-function step(n: number, title: string): void {
-  console.log(`\n=== Шаг ${n}/${TOTAL_STEPS}. ${title} ===`);
-}
-
-/** Тот же эндпоинт, что внутри get_day_summary; нужен id записи для проверок. */
-async function fetchEatenFoodRecords(auth: FiziklAuth, date: string): Promise<EatenFoodRecord[]> {
-  return getJson<EatenFoodRecord[]>(
-    auth,
-    `${FIZIKL_URLS.foodTracker}/api/v1/ration/eaten-food/list/?eaten_date=${date}`,
-  );
-}
-
 let createdId: number | null = null;
 let cleanupDone = false;
 /** Модульный уровень: аварийная очистка в finally должна иметь доступ к авторизации. */
 let auth: FiziklAuth | null = null;
+
+function step(n: number, title: string): void {
+  console.log(`\n=== Шаг ${n}/${TOTAL_STEPS}. ${title} ===`);
+}
 
 async function main(): Promise<void> {
   step(1, "Креды из .env");
@@ -58,16 +48,14 @@ async function main(): Promise<void> {
   console.log(await listMeals(auth));
 
   step(3, `search_food «${SEARCH_QUERY}» (лимит ${SEARCH_LIMIT})`);
-  const searchText = await searchFood(auth, SEARCH_QUERY, SEARCH_LIMIT);
-  console.log(searchText);
-  const idMatch = searchText.match(/id: (\d+)/);
-  if (!idMatch) {
-    throw new Error("search_food не вернул ни одного id продукта — продолжать не на чем.");
+  const { total, cards } = await searchFoodCards(auth, SEARCH_QUERY, SEARCH_LIMIT);
+  console.log(formatSearchResults(SEARCH_QUERY, total, cards, SEARCH_LIMIT));
+  const card = cards[0]; // карточки уже гидратированы поиском (тот же эндпоинт /food/<id>/)
+  if (!card) {
+    throw new Error(`search_food не нашёл «${SEARCH_QUERY}» — продолжать не на чем.`);
   }
-  const foodId = idMatch[1];
 
-  step(4, `get_food ${foodId} — ищем порцию «г» (metric_weight: 1)`);
-  const card = await fetchFoodCard(auth, foodId);
+  step(4, `get_food ${card.id} — ищем порцию «г» (metric_weight: 1)`);
   console.log(formatFoodCard(card));
   const gramServing = (card.food_servings ?? []).find(isGramServing);
   if (!gramServing) {
@@ -77,23 +65,20 @@ async function main(): Promise<void> {
   }
 
   step(5, `log_food: ${GRAMS} г, приём пищи «${MEAL}», дата ${date}`);
-  const logText = await logFood(auth, {
+  const logArgs: LogFoodArgs = {
     servingId: gramServing.id,
     servingAmount: GRAMS,
     meal: MEAL,
     eatenDate: date,
-  });
-  console.log(logText);
-  const recordMatch = logText.match(/id записи: (\d+)/);
-  if (!recordMatch) {
-    throw new Error("log_food не сообщил id записи — гарантированная очистка невозможна.");
-  }
-  createdId = Number(recordMatch[1]);
+  };
+  const created = await createEatenFood(auth, logArgs);
+  console.log(formatCreatedEatenFood(created, logArgs, new Date()));
+  createdId = created.id; // структурный id: гарантия очистки не зависит от формулировок ответа
   console.log(`Создана запись ${createdId} — при любом сбое дальше она будет удалена.`);
 
   step(6, `get_day_summary за ${date} — запись должна быть видна`);
   console.log(await getDaySummary(auth, { date }));
-  const records = await fetchEatenFoodRecords(auth, date);
+  const records = await fetchEatenFood(auth, date);
   if (!records.some((record) => record.id === createdId)) {
     throw new Error(`Запись ${createdId} не найдена в eaten-food/list за ${date}.`);
   }
@@ -104,7 +89,7 @@ async function main(): Promise<void> {
   cleanupDone = true;
 
   step(8, "повторная проверка — записи в дневнике больше нет");
-  const after = await fetchEatenFoodRecords(auth, date);
+  const after = await fetchEatenFood(auth, date);
   if (after.some((record) => record.id === createdId)) {
     throw new Error(`Запись ${createdId} всё ещё в дневнике за ${date} после удаления!`);
   }

@@ -5,7 +5,10 @@
 
 import { FIZIKL_URLS } from "../config.js";
 import type { FiziklAuth } from "../fizikl/auth.js";
-import { getJson, sendJson } from "../fizikl/client.js";
+import { sendJson } from "../fizikl/client.js";
+import type { Meal } from "../fizikl/types.js";
+import { today } from "./format.js";
+import { fetchMeals } from "./list-meals.js";
 
 /** Окна [04:00,12:00) zavtrak, [12:00,18:00) obed, [18:00,21:00) uzhin, [21:00,04:00) perekus. */
 export function pickMeal(now: Date): string {
@@ -14,20 +17,6 @@ export function pickMeal(now: Date): string {
   if (hours >= 12 && hours < 18) return "obed";
   if (hours >= 18 && hours < 21) return "uzhin";
   return "perekus";
-}
-
-/** Локальная календарная дата YYYY-MM-DD без времени. */
-export function today(now: Date): string {
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
-interface Meal {
-  id: number;
-  name: string;
-  slug: string;
-  is_enable: boolean;
 }
 
 export interface LogFoodArgs {
@@ -41,12 +30,45 @@ export interface LogFoodArgs {
   eatenDate?: string;
 }
 
-/** Запись съеденного: массив из одного элемента в eaten-food/create-list (ADR-0004, задел на будущее). */
-export async function logFood(
+/**
+ * Кэш meal/list на время жизни процесса: тёплый сервер не платит round-trip за каждую
+ * запись. Компромисс (осознанный): приёмы пищи, созданные другим клиентом посреди
+ * сессии, станут видны только после рестарта — для пре-валидации slug это приемлемо.
+ * Неудачный запрос кэш не заполняет — следующая попытка снова сходит в сеть.
+ */
+let mealsCache: Meal[] | null = null;
+
+/** Сброс кэша приёмов пищи (точка для тестов). */
+export function resetMealsCache(): void {
+  mealsCache = null;
+}
+
+async function fetchMealsCached(auth: FiziklAuth): Promise<Meal[]> {
+  if (mealsCache === null) {
+    mealsCache = await fetchMeals(auth);
+  }
+  return mealsCache;
+}
+
+/** Структурированный итог записи: id и применённые значения — для программных проверок (smoke), без разбора текста. */
+export interface CreatedEatenFood {
+  /** id созданной записи из ответа create-list; он же нужен delete_eaten_food. */
+  id: number;
+  /** Приём пищи, реально применённый при записи (явный или подобранный). */
+  meal: Meal;
+  /** Дата записи YYYY-MM-DD — явная или дефолтная «сегодня». */
+  eatenDate: string;
+}
+
+/**
+ * Валидация, подбор дефолтов (ADR-0005) и запись: POST eaten-food/create-list
+ * (массив из одного элемента — ADR-0004, задел на будущее).
+ */
+export async function createEatenFood(
   auth: FiziklAuth,
   args: LogFoodArgs,
   now: Date = new Date(),
-): Promise<string> {
+): Promise<CreatedEatenFood> {
   // Валидация до любых запросов: дневник остаётся нетронутым.
   if (!(args.servingAmount >= 0.01)) {
     throw new Error(
@@ -57,9 +79,9 @@ export async function logFood(
   const mealSlug = args.meal ?? pickMeal(now);
   const eatenDate = args.eatenDate ?? today(now);
 
-  // Пре-валидация slug по живому списку приёмов (тот же вызов, что у list_meals):
+  // Пре-валидация slug по списку приёмов (кэширован, тот же вызов, что у list_meals):
   // неизвестный slug — русская ошибка до записи, дневник не трогаем.
-  const meals = await getJson<Meal[]>(auth, `${FIZIKL_URLS.foodTracker}/api/v1/ration/meal/list/`);
+  const meals = await fetchMealsCached(auth);
   const meal = meals.find((candidate) => candidate.slug === mealSlug);
   if (!meal) {
     const known = meals.map((candidate) => candidate.slug).join(", ");
@@ -81,14 +103,36 @@ export async function logFood(
     ],
   );
 
-  const record = created[0];
-  const idPart = typeof record?.id === "number" ? ` (id записи: ${record.id})` : "";
+  const id = created[0]?.id;
+  if (typeof id !== "number") {
+    // Без id запись не удалить (delete_eaten_food) — честная ошибка вместо записи-сироты.
+    throw new Error("Физикл не вернул id созданной записи — не могу подтвердить запись.");
+  }
+  return { id, meal, eatenDate };
+}
+
+/** Человекочитаемый ответ log_food: id записи и применённые дефолты названы явно (ADR-0005). */
+export function formatCreatedEatenFood(
+  created: CreatedEatenFood,
+  args: LogFoodArgs,
+  now: Date,
+): string {
   const clock = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const mealLine = args.meal
-    ? `Приём пищи: ${meal.name} (${meal.slug}) — задан явно.`
-    : `Приём пищи: ${meal.name} (${meal.slug}) — подобран по времени (сейчас ${clock}).`;
+    ? `Приём пищи: ${created.meal.name} (${created.meal.slug}) — задан явно.`
+    : `Приём пищи: ${created.meal.name} (${created.meal.slug}) — подобран по времени (сейчас ${clock}).`;
   const dateLine = args.eatenDate
-    ? `Дата: ${eatenDate} — задана явно.`
-    : `Дата: сегодня, ${eatenDate}.`;
-  return ["Записано в дневник питания:", `- запись${idPart}`, mealLine, dateLine].join("\n");
+    ? `Дата: ${created.eatenDate} — задана явно.`
+    : `Дата: сегодня, ${created.eatenDate}.`;
+  return ["Записано в дневник питания:", `- запись (id записи: ${created.id})`, mealLine, dateLine].join("\n");
+}
+
+/** MCP-обёртка: структурная запись + текст ответа. */
+export async function logFood(
+  auth: FiziklAuth,
+  args: LogFoodArgs,
+  now: Date = new Date(),
+): Promise<string> {
+  const created = await createEatenFood(auth, args, now);
+  return formatCreatedEatenFood(created, args, now);
 }
