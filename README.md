@@ -44,6 +44,8 @@ PASSWORD=ваш-пароль
 }
 ```
 
+В этом репозитории такой конфиг уже лежит в `.zcode/config.json` — путь там абсолютный и машина-специфичный, после клонирования в другое место поправьте его под себя.
+
 **Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
@@ -57,7 +59,7 @@ PASSWORD=ваш-пароль
 }
 ```
 
-**Cursor / Claude Code** — та же пара `command`/`args` в соответствующем конфиге MCP.
+**Cursor** (`~/.cursor/mcp.json`) и **Claude Code** (`claude mcp add fizikl -- node /absolute/path/to/fizikl-mcp/dist/index.js`) — та же пара `command`/`args`, ключ верхнего уровня `mcpServers`, как у Claude Desktop.
 
 После подключения у агента появится инструмент `mcp__fizikl__list_meals`.
 
