@@ -6,6 +6,7 @@ import { FiziklAuth } from "../src/fizikl/auth.js";
 
 export const AUTH_BASE = "https://pht.space";
 export const FOOD_TRACKER_BASE = "https://food-tracker.pht.space";
+export const SEARCH_BASE = "https://search.pht.space";
 
 export const credentials = { login: "user@example.com", password: "secret-pass" };
 
@@ -22,6 +23,7 @@ export interface MockEnv {
   agent: MockAgent;
   authPool: ReturnType<MockAgent["get"]>;
   foodTrackerPool: ReturnType<MockAgent["get"]>;
+  searchPool: ReturnType<MockAgent["get"]>;
   authFilePath: string;
 }
 
@@ -34,6 +36,7 @@ export function setupMock(): MockEnv {
     agent,
     authPool: agent.get(AUTH_BASE),
     foodTrackerPool: agent.get(FOOD_TRACKER_BASE),
+    searchPool: agent.get(SEARCH_BASE),
     authFilePath: path.join(dir, "auth.json"),
   };
 }
