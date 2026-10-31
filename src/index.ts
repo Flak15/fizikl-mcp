@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AUTH_FILE_PATH, getCredentials, loadEnvFile } from "./config.js";
 import { FiziklAuth } from "./fizikl/auth.js";
 import { deleteEatenFood } from "./tools/delete-eaten-food.js";
+import { getDaySummary } from "./tools/get-day-summary.js";
 import { logFood } from "./tools/log-food.js";
 import { listMeals } from "./tools/list-meals.js";
 
@@ -79,6 +80,27 @@ server.tool(
   async ({ id }) => {
     try {
       return { content: [{ type: "text", text: await deleteEatenFood(auth, id) }] };
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }],
+      };
+    }
+  },
+);
+
+server.tool(
+  "get_day_summary",
+  "Итоги дня (калории, белки, жиры, углеводы, клетчатка, вес еды) и записи о съеденном за дату, сгруппированные по приёмам пищи. Без даты — сегодня.",
+  {
+    date: z
+      .string()
+      .optional()
+      .describe("Дата в формате YYYY-MM-DD (например 2026-10-31); без параметра — сегодня"),
+  },
+  async ({ date }) => {
+    try {
+      return { content: [{ type: "text", text: await getDaySummary(auth, { date }) }] };
     } catch (error) {
       return {
         isError: true,
