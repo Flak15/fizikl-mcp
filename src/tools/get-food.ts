@@ -1,6 +1,7 @@
 import { FIZIKL_URLS } from "../config.js";
 import type { FiziklAuth } from "../fizikl/auth.js";
 import { getJson } from "../fizikl/client.js";
+import { fmtNum } from "./format.js";
 
 export interface FoodServing {
   id: number;
@@ -77,13 +78,9 @@ function formatWeight(metricWeight: number): string {
 
 function formatNutrition(serving: FoodServing): string {
   if (typeof serving.calories !== "number") return "";
-  const parts = [`${round(serving.calories)} ккал`];
-  if (typeof serving.protein === "number") parts.push(`Б ${round(serving.protein)}`);
-  if (typeof serving.fat === "number") parts.push(`Ж ${round(serving.fat)}`);
-  if (typeof serving.carbohydrate === "number") parts.push(`У ${round(serving.carbohydrate)}`);
+  const parts = [`${fmtNum(serving.calories)} ккал`];
+  if (typeof serving.protein === "number") parts.push(`Б ${fmtNum(serving.protein)}`);
+  if (typeof serving.fat === "number") parts.push(`Ж ${fmtNum(serving.fat)}`);
+  if (typeof serving.carbohydrate === "number") parts.push(`У ${fmtNum(serving.carbohydrate)}`);
   return `; КБЖУ на порцию: ${parts.join(", ")}`;
-}
-
-function round(value: number): string {
-  return String(Number(value.toFixed(1)));
 }

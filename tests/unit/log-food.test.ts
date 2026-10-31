@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { logFood, pickMeal, today } from "../../src/tools/log-food.js";
+import { today } from "../../src/tools/format.js";
+import {
+  createEatenFood,
+  formatCreatedEatenFood,
+  logFood,
+  pickMeal,
+  resetMealsCache,
+  type LogFoodArgs,
+} from "../../src/tools/log-food.js";
 import { FOOD_TRACKER_BASE, makeAuth, mockLogin, setupMock, teardownMock, type MockEnv } from "../helpers.js";
 
 const MEALS_PATH = "/api/v1/ration/meal/list/";
@@ -47,6 +55,7 @@ describe("logFood", () => {
 
   beforeEach(() => {
     env = setupMock();
+    resetMealsCache(); // кэш приёмов — модульное состояние, не тащим между тестами
   });
   afterEach(() => teardownMock());
 
@@ -152,5 +161,93 @@ describe("logFood", () => {
         new Date(2026, 9, 31, 14, 30),
       ),
     ).rejects.toThrowError(/«poldnik» не найден.*zavtrak.*obed.*uzhin.*perekus/s);
+  });
+
+  it("createEatenFood возвращает структурный итог: id записи и применённые meal и дату", async () => {
+    const sent: { body?: unknown } = {};
+    mockCreate(sent);
+
+    const created = await createEatenFood(
+      makeAuth(env),
+      { servingId: 293021, servingAmount: 200, meal: "obed", eatenDate: "2026-10-31" },
+      new Date(2026, 9, 31, 14, 30),
+    );
+
+    expect(created.id).toBe(24402683);
+    expect(created.eatenDate).toBe("2026-10-31");
+    expect(created.meal.slug).toBe("obed");
+    expect(created.meal.name).toBe("обед");
+    expect(sent.body).toEqual([
+      { serving: 293021, serving_amount: 200, meal: "obed", eaten_date: "2026-10-31" },
+    ]);
+  });
+
+  it("формат от структурного итога совпадает с текстом logFood байт-в-байт", async () => {
+    const access = mockLogin(env);
+    const auth = makeAuth(env); // один инстанс: после первого логина access кэшируется
+    const args: LogFoodArgs = { servingId: 293021, servingAmount: 150, meal: "obed", eatenDate: "2026-10-31" };
+    const now = new Date(2026, 9, 31, 14, 30);
+
+    // Одинаковый раунд meal/list + create-list на каждый вызов (один access — один заголовок).
+    const mockRound = (): void => {
+      env.foodTrackerPool
+        .intercept({ path: MEALS_PATH, method: "GET", headers: { authorization: `Secret ${access}` } })
+        .reply(200, MEALS);
+      env.foodTrackerPool
+        .intercept({
+          path: CREATE_PATH,
+          method: "POST",
+          headers: { authorization: `Secret ${access}`, "content-type": "application/json" },
+        })
+        .reply(201, [{ id: 24402683 }]);
+    };
+
+    mockRound();
+    const text = await logFood(auth, args, now);
+
+    mockRound();
+    const created = await createEatenFood(auth, args, now);
+    expect(formatCreatedEatenFood(created, args, now)).toBe(text);
+  });
+
+  it("meal/list кэшируется на процесс: повторная запись не ходит за приёмами в сеть", async () => {
+    const access = mockLogin(env);
+    // meal/list перехвачен РОВНО один раз (по умолчанию), create-list — дважды:
+    // второй logFood, сходит ли он за meal/list, упал бы с MockException.
+    env.foodTrackerPool
+      .intercept({ path: MEALS_PATH, method: "GET", headers: { authorization: `Secret ${access}` } })
+      .reply(200, MEALS);
+    env.foodTrackerPool
+      .intercept({
+        path: CREATE_PATH,
+        method: "POST",
+        headers: { authorization: `Secret ${access}`, "content-type": "application/json" },
+      })
+      .reply(201, [{ id: 1 }])
+      .times(2);
+
+    const auth = makeAuth(env);
+    const args: LogFoodArgs = { servingId: 293021, servingAmount: 100, meal: "obed" };
+
+    await logFood(auth, args, new Date(2026, 9, 31, 14, 30));
+    await logFood(auth, args, new Date(2026, 9, 31, 14, 30)); // вторая запись — из кэша
+  });
+
+  it("ответ create-list без id — русская ошибка: запись-сирота не остаётся незамеченной", async () => {
+    const access = mockLogin(env);
+    env.foodTrackerPool
+      .intercept({ path: MEALS_PATH, method: "GET", headers: { authorization: `Secret ${access}` } })
+      .reply(200, MEALS);
+    env.foodTrackerPool
+      .intercept({
+        path: CREATE_PATH,
+        method: "POST",
+        headers: { authorization: `Secret ${access}`, "content-type": "application/json" },
+      })
+      .reply(201, [{}]);
+
+    await expect(
+      logFood(makeAuth(env), { servingId: 293021, servingAmount: 100 }, new Date(2026, 9, 31, 14, 30)),
+    ).rejects.toThrowError(/не вернул id/);
   });
 });

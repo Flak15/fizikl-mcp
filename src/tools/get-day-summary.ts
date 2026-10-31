@@ -1,6 +1,8 @@
 import { FIZIKL_URLS } from "../config.js";
 import type { FiziklAuth } from "../fizikl/auth.js";
 import { getJson } from "../fizikl/client.js";
+import type { EatenFoodItem } from "../fizikl/types.js";
+import { DATE_PATTERN, fmtNum, today } from "./format.js";
 
 /** Запись календаря дневных отчётов (итог дня); значения — на съеденное за eaten_date. */
 interface DayReport {
@@ -11,15 +13,6 @@ interface DayReport {
   carbohydrate?: number;
   fiber?: number;
   food_weight?: number;
-}
-
-/** Запись о съеденном (eaten-food): строка дневника с вложенными продуктом и порцией. */
-interface EatenFoodItem {
-  id: number;
-  meal: string;
-  serving_amount: number;
-  food?: { name?: string } | null;
-  serving?: { name?: string; metric_weight?: number } | null;
 }
 
 export interface GetDaySummaryOptions {
@@ -39,15 +32,10 @@ const MEAL_NAMES: Record<string, string> = {
   perekus: "перекус",
 };
 
-/** Сегодняшняя дата в формате YYYY-MM-DD по локальной таймзоне (ADR-0005). */
-function todayDateString(now: Date = new Date()): string {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+/** Ключ группы для записей без приёма пищи (meal отсутствует, пуст или не строка). */
+const NO_MEAL_KEY = "";
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const NO_MEAL_LABEL = "Без приёма пищи";
 
 /** Валидация YYYY-MM-DD до любых запросов: формат и существование такого календарного дня. */
 function validateDate(date: string): void {
@@ -68,22 +56,25 @@ async function fetchDayReport(auth: FiziklAuth): Promise<DayReport[]> {
   return getJson<DayReport[]>(auth, `${FIZIKL_URLS.foodTracker}/api/v1/report/list/calendar/`);
 }
 
-/** Записи о съеденном за дату из eaten-food/list. */
-async function fetchEatenFood(auth: FiziklAuth, date: string): Promise<EatenFoodItem[]> {
+/** Записи о съеденном за дату из eaten-food/list. Отдельная функция — smoke проверяет ею дневник. */
+export async function fetchEatenFood(auth: FiziklAuth, date: string): Promise<EatenFoodItem[]> {
   return getJson<EatenFoodItem[]>(
     auth,
     `${FIZIKL_URLS.foodTracker}/api/v1/ration/eaten-food/list/?eaten_date=${date}`,
   );
 }
 
-/** Число без хвостовых нулей, с запасом в один знак после запятой. */
-function fmtNum(value: number): string {
-  return String(Math.round(value * 10) / 10);
-}
-
 function mealLabel(slug: string): string {
+  if (slug === NO_MEAL_KEY) return NO_MEAL_LABEL;
   const name = MEAL_NAMES[slug] ?? slug;
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** Ключ группировки: slug приёма; записи без валидного meal — в общую группу «Без приёма пищи». */
+function mealKey(item: EatenFoodItem): string {
+  // meal — строка-slug по swagger (см. src/fizikl/types.ts); защита от экзотики,
+  // чтобы группа не деградировала в «[object Object]».
+  return typeof item.meal === "string" && item.meal.trim() !== "" ? item.meal : NO_MEAL_KEY;
 }
 
 function formatReport(date: string, report: DayReport): string {
@@ -121,11 +112,12 @@ function formatItem(item: EatenFoodItem): string {
 function groupByMeal(items: EatenFoodItem[]): Map<string, EatenFoodItem[]> {
   const bySlug = new Map<string, EatenFoodItem[]>();
   for (const item of items) {
-    const list = bySlug.get(item.meal);
+    const key = mealKey(item);
+    const list = bySlug.get(key);
     if (list) {
       list.push(item);
     } else {
-      bySlug.set(item.meal, [item]);
+      bySlug.set(key, [item]);
     }
   }
   const ordered = new Map<string, EatenFoodItem[]>();
@@ -148,7 +140,7 @@ function formatEatenFood(date: string, items: EatenFoodItem[]): string {
 }
 
 export async function getDaySummary(auth: FiziklAuth, options: GetDaySummaryOptions = {}): Promise<string> {
-  const date = options.date ?? todayDateString(options.now);
+  const date = options.date ?? today(options.now ?? new Date());
   validateDate(date);
   // Запросы последовательно: getAccess() в FiziklAuth не защищён от параллельного двойного логина.
   const reports = await fetchDayReport(auth);

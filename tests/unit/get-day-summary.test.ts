@@ -156,6 +156,43 @@ describe("getDaySummary", () => {
     expect(text).toMatch(/записей нет/i);
   });
 
+  it("записи без meal (пусто/не строка) — под «Без приёма пищи», без «[object Object]»", async () => {
+    const access = mockLogin(env);
+    mockCalendar(access, []);
+    mockEatenFood(access, "2026-10-31", [
+      {
+        id: 1,
+        meal: "",
+        serving_amount: 100,
+        food: { id: 11, name: "Хлеб" },
+        serving: { id: 111, name: "г", metric_weight: 1 },
+      },
+      {
+        // meal отсутствует вовсе
+        id: 2,
+        serving_amount: 50,
+        food: { id: 22, name: "Сыр" },
+        serving: { id: 222, name: "г", metric_weight: 1 },
+      },
+      {
+        // meal — не строка (страховка от деградации в «[object Object]»)
+        id: 3,
+        meal: { slug: "obed" } as unknown as string,
+        serving_amount: 30,
+        food: { id: 33, name: "Йогурт" },
+        serving: { id: 333, name: "г", metric_weight: 1 },
+      },
+    ]);
+
+    const text = await getDaySummary(makeAuth(env), { date: "2026-10-31" });
+
+    expect(text).toContain("Без приёма пищи:");
+    expect(text).toContain("Хлеб — 100 г");
+    expect(text).toContain("Сыр — 50 г");
+    expect(text).toContain("Йогурт — 30 г");
+    expect(text).not.toContain("[object Object]");
+  });
+
   it("неверный формат даты — русскоязычная ошибка до запросов к API", async () => {
     const access = mockLogin(env);
     // Перехватчики не регистрируем намеренно: любой запрос упал бы с «Mock dispatch not matched».

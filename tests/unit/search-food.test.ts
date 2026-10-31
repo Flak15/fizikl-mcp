@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { searchFood } from "../../src/tools/search-food.js";
+import { formatSearchResults, searchFood, searchFoodCards } from "../../src/tools/search-food.js";
 import { makeAuth, mockLogin, setupMock, teardownMock, type MockEnv } from "../helpers.js";
 
 const SEARCH_PATH = "/api/v1/search/food/";
@@ -102,6 +102,23 @@ describe("searchFood", () => {
 
     expect(text).toMatch(/ничего не найдено/i);
     expect(text).toContain("ыыы");
+  });
+
+  it("searchFoodCards отдаёт структуру (total + карточки): smoke берёт id из данных, не из текста", async () => {
+    mockSearch(env, "гречка", 3, ["143370", "143369"]);
+    mockCard(env, 143370, "Крупа гречневая, сухая");
+    mockCard(env, 143369, "Гречка отварная");
+
+    const { total, cards } = await searchFoodCards(makeAuth(env), "гречка", 3);
+
+    expect(total).toBe(2);
+    expect(cards.map((card) => card.id)).toEqual([143370, 143369]);
+    expect(cards[0]?.name).toBe("Крупа гречневая, сухая");
+    expect(cards[1]?.name).toBe("Гречка отварная");
+  });
+
+  it("formatSearchResults: пустая выдача — тот же русский текст, что у searchFood", () => {
+    expect(formatSearchResults("ыыы", 0, [], 10)).toMatch(/ничего не найдено/i);
   });
 
   it("404 при гидратации карточки — ошибка API Физикла", async () => {
