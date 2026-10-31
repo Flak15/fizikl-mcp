@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "servers": {
+      "fizikl": {
+        "command": "node",
+        "args": ["/Users/nb/fizikl-mcp/dist/index.js"]
+      }
+    }
+  }
+}

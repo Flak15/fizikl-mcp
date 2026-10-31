@@ -29,14 +29,16 @@ PASSWORD=ваш-пароль
 
 Общий вид: клиент запускает процесс `node <путь-к-проекту>/dist/index.js`.
 
-**ZCode** — workspace-конфигурация MCP (.zcode/mcp.json или через UI настроек MCP):
+**ZCode** — workspace-конфигурация MCP: `.zcode/config.json` в корне проекта, серверы вложены в `mcp.servers` (подключается автоматически при открытии проекта; статус виден в Settings → MCP). Именно так сервер подключён в этом репозитории.
 
 ```json
 {
-  "mcpServers": {
-    "fizikl": {
-      "command": "node",
-      "args": ["/absolute/path/to/fizikl-mcp/dist/index.js"]
+  "mcp": {
+    "servers": {
+      "fizikl": {
+        "command": "node",
+        "args": ["/absolute/path/to/fizikl-mcp/dist/index.js"]
+      }
     }
   }
 }
