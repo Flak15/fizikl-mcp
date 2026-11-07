@@ -91,7 +91,10 @@ export class FiziklAuth {
       password: this.options.credentials.password,
     });
     if (!res.ok) {
-      throw new FiziklAuthError(`Не удалось войти в Физикл (HTTP ${res.status}). Проверьте LOGIN и PASSWORD в .env.`, res.status);
+      throw new FiziklAuthError(
+        `Не удалось войти в Физикл (HTTP ${res.status}). Проверьте LOGIN и PASSWORD в env-блоке конфигурации MCP-клиента.`,
+        res.status,
+      );
     }
     const data = (await res.json()) as TokenResponse;
     this.access = data.access;

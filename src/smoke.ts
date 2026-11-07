@@ -1,15 +1,15 @@
 /**
  * Ручной smoke-цикл на проде (ADR-0006, тикет 06): логин → поиск → карточка →
  * запись → проверка дня → удаление. НЕ автотест и не в CI: реальная сеть,
- * реальный дневник. Запуск: `npm run smoke`, креды — LOGIN/PASSWORD в `.env`
- * у корня проекта. Запись удаляется за собой (гарантия в finally); известное
- * последствие: дневной отчёт за дату прогона может сохранить значения дня теста.
+ * реальный дневник. Запуск: `LOGIN=… PASSWORD=… npm run smoke`. Запись
+ * удаляется за собой (гарантия в finally); известное последствие: дневной
+ * отчёт за дату прогона может сохранить значения дня теста.
  *
  * id записей и продуктов берутся из структурных экспортов инструментов
  * (createEatenFood, searchFoodCards, fetchEatenFood) — не из разбора текста.
  */
 
-import { AUTH_FILE_PATH, getCredentials, loadEnvFile } from "./config.js";
+import { AUTH_FILE_PATH, getCredentials } from "./config.js";
 import { FiziklAuth } from "./fizikl/auth.js";
 import { deleteEatenFood } from "./tools/delete-eaten-food.js";
 import { today } from "./tools/format.js";
@@ -35,8 +35,7 @@ function step(n: number, title: string): void {
 }
 
 async function main(): Promise<void> {
-  step(1, "Креды из .env");
-  loadEnvFile();
+  step(1, "Креды из окружения");
   const credentials = getCredentials();
   console.log(
     `LOGIN задан (${credentials.login.length} симв.), PASSWORD задан (${credentials.password.length} симв.).`,

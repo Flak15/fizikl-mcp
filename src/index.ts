@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { ShapeOutput } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { AUTH_FILE_PATH, getCredentials, loadEnvFile } from "./config.js";
+import { AUTH_FILE_PATH, getCredentials } from "./config.js";
 import { FiziklAuth } from "./fizikl/auth.js";
 import { deleteEatenFood } from "./tools/delete-eaten-food.js";
 import { DATE_PATTERN } from "./tools/format.js";
@@ -13,8 +13,6 @@ import { getFood } from "./tools/get-food.js";
 import { listMeals } from "./tools/list-meals.js";
 import { logFood } from "./tools/log-food.js";
 import { searchFood } from "./tools/search-food.js";
-
-loadEnvFile();
 
 let credentials;
 try {

@@ -16,20 +16,15 @@ npm ci
 npm run build
 ```
 
-Создайте `.env` у корня проекта:
-
-```
-LOGIN=you@example.com
-PASSWORD=ваш-пароль
-```
+Креды (`LOGIN`/`PASSWORD` аккаунта Физикла) в репозитории не хранятся: клиент передаёт их серверному процессу через `env`-блок своей MCP-конфигурации — см. [Подключение к клиенту](#подключение-к-клиенту).
 
 Авторизация ленивая: сервер логинится при первом вызове инструмента. Refresh-токен (живёт 30 дней) сохраняется в `~/.fizikl-mcp/auth.json` с правами 600 — ре-логин нужен не чаще раза в месяц.
 
 ## Подключение к клиенту
 
-Общий вид: клиент запускает процесс `node <путь-к-проекту>/dist/index.js` (путь — абсолютный).
+Общий вид: клиент запускает процесс `node <путь-к-проекту>/dist/index.js` (путь — абсолютный) и передаёт `LOGIN`/`PASSWORD` через `env`-блок записи `fizikl`. Запись самодостаточна: `command`, `args` и `env` задаются вместе.
 
-**ZCode** — workspace-конфигурация MCP: `.zcode/config.json` в корне проекта, серверы вложены в `mcp.servers` (подключается автоматически при открытии проекта; статус виден в Settings → MCP). Именно так сервер подключён в этом репозитории.
+**ZCode** — юзер-скоуп `~/.zcode/cli/config.json`, серверы вложены в `mcp.servers` (действует во всех workspace, статус виден в Settings → MCP). Юзер-скоуп заменяет одноимённую workspace-запись из `.zcode/config.json` целиком, без послойного слияния полей, — поэтому держите в ней все три поля сразу.
 
 ```json
 {
@@ -37,14 +32,16 @@ PASSWORD=ваш-пароль
     "servers": {
       "fizikl": {
         "command": "node",
-        "args": ["/absolute/path/to/fizikl-mcp/dist/index.js"]
+        "args": ["/absolute/path/to/fizikl-mcp/dist/index.js"],
+        "env": {
+          "LOGIN": "you@example.com",
+          "PASSWORD": "ваш-пароль"
+        }
       }
     }
   }
 }
 ```
-
-В этом репозитории такой конфиг уже лежит в `.zcode/config.json` — путь там абсолютный и машина-специфичный, после клонирования в другое место поправьте его под себя.
 
 **Claude Desktop** (`claude_desktop_config.json`):
 
@@ -53,19 +50,32 @@ PASSWORD=ваш-пароль
   "mcpServers": {
     "fizikl": {
       "command": "node",
-      "args": ["/absolute/path/to/fizikl-mcp/dist/index.js"]
+      "args": ["/absolute/path/to/fizikl-mcp/dist/index.js"],
+      "env": {
+        "LOGIN": "you@example.com",
+        "PASSWORD": "ваш-пароль"
+      }
     }
   }
 }
 ```
 
-**Cursor** (`~/.cursor/mcp.json`) и **Claude Code** (`claude mcp add fizikl -- node /absolute/path/to/fizikl-mcp/dist/index.js`) — та же пара `command`/`args`, ключ верхнего уровня `mcpServers`, как у Claude Desktop.
+**Cursor** (`~/.cursor/mcp.json`) — та же запись с `command`/`args`/`env`, ключ верхнего уровня `mcpServers`, как у Claude Desktop.
+
+**Claude Code**:
+
+```bash
+claude mcp add fizikl \
+  -e LOGIN=you@example.com \
+  -e PASSWORD=ваш-пароль \
+  -- node /absolute/path/to/fizikl-mcp/dist/index.js
+```
 
 После подключения инструменты агента доступны с префиксом `mcp__fizikl__*` (например, `mcp__fizikl__search_food`).
 
 ## Инструменты
 
-Все ошибки возвращаются на русском языке; при сообщениях о входе проверьте `LOGIN`/`PASSWORD` в `.env`.
+Все ошибки возвращаются на русском языке; при сообщениях о входе проверьте `LOGIN`/`PASSWORD` в `env`-блоке конфигурации MCP-клиента.
 
 ### `list_meals()`
 
@@ -116,12 +126,12 @@ npm run dev       # запуск без сборки (tsx src/index.ts)
 
 ### Smoke на проде
 
-`npm run smoke` — ручной живой цикл (ADR-0006): логин → `search_food` «гречка» → `get_food` → `log_food` 10 г в `perekus` за сегодня → `get_day_summary` → `delete_eaten_food` → контрольное отсутствие записи. Нужны креды в `.env`; других ручных шагов нет.
+`npm run smoke` — ручной живой цикл (ADR-0006): логин → `search_food` «гречка» → `get_food` → `log_food` 10 г в `perekus` за сегодня → `get_day_summary` → `delete_eaten_food` → контрольное отсутствие записи. Запуск: `LOGIN=… PASSWORD=… npm run smoke`; других ручных шагов нет.
 
 Внимание: smoke пишет в **настоящий дневник** и удаляет свою запись за собой (гарантированно, даже при сбое проверки). Дневной отчёт за дату прогона может сохранить значения дня теста.
 
 ## Безопасность
 
-- `.env` с кредами в `.gitignore`; не коммитите его.
+- Креды живут только в `env`-блоке персонального конфига MCP-клиента, вне репозитория; файлов с учётными данными в репозитории нет.
 - `~/.fizikl-mcp/auth.json` содержит refresh-токен — файл создаётся с правами 600.
 - Сервер ходит только на прод-хосты Физикла (`pht.space`, `food-tracker.pht.space`, `search.pht.space`), зашитые константами.
